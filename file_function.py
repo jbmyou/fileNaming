@@ -66,7 +66,7 @@ def rename(src: str, dst: str) -> None:
     dst_final = dir + "/" + new_name
     os.rename(src, dst_final)
 
-    print(f, new_name)
+    print(src, new_name)
 
 
 #########################################
