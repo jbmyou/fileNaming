@@ -14,6 +14,62 @@ from pathlib import Path
 import traceback
 
 #########################################
+# 채무자조회.xlsx -> dict
+#########################################
+def debtorInfoDict(path: str):
+    """
+    채무자조회.xlsx파일을 읽어 채무자키를 key로 하고 
+    나머지컬럼을 value로 하는 dict반환
+    dict["키"].컬럼명 으로 읽으면 편함
+    """
+    df_c = pd.read_excel(path)
+    dict = {}
+    for key, row in df_c.iterrows():
+        dict[str(row.채무자키)] = row[1:]
+    # row는 시리즈. 채무자키는 dict의 키로 넣었으니 row[1:]을 value로 넣자.
+    # 시리지는 .컬럼명으로 읽으면 되니까 최종적으로
+    # dict["20495151"].성명 이렇게 읽으면 된다.
+
+    # 2차원 딕셔너리는 row[1:] 대신 아래를 사용
+    # {'매각사구분':row.매각사구분, '성명' : row.성명, \
+        # '주민번호인':row.주민번호인, '관리자기타':str(row.관리자기타), '보증인성명':row.보증인성명}
+    return dict
+
+
+#########################################
+# rename
+#########################################
+def rename(src:str, dst:str)->None :
+    """
+    전체경로(파일명포함) 두개를 받아서 파일 이름 바꾸는 함수
+    동일파일이 있는 경우, 넘버링
+    """
+    # dst dir과 file 분리하기
+    # file 에서 일련번호 분리하기
+    # while - 일련번호 다시 붙이기
+
+    dir = os.path.split(dst)[0]
+    f_name = os.path.split(dst)[1]
+    stem = os.path.splitext(f_name)[0]
+    ext = os.path.splitext(f_name)[1]
+    
+    temp = re.sub("[^가-힣]+$", "", stem)
+    new_name = temp + ext
+    
+    i = 1
+    while os.path.exists(dir+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
+        new_name = temp + "_"+"("+str(i)+")"+ext
+        i += 1
+
+    dst_final = dir + "/" + new_name
+    os.rename(src, dst_final)
+
+    print(f, new_name)
+
+
+
+
+#########################################
 # 생성일, 수정일 보기 + time을 보기 좋게
 #########################################
 
@@ -341,6 +397,8 @@ def final_rename(path):
 # 최종확인2 - 마지막으로 3개 양식과 언버가 개수 확인
 #########################################
 
+# 등,초본이 초본을 포함해버린다. 이거 수정해야
+
 
 def final_check(path):
     os.chdir(path)
@@ -377,9 +435,9 @@ def final_check(path):
             else:
                 pass
 
-    print(index, "개의 파일 처리 완료")
-    print("메인3개", *lista, sep="\n")
-    print("언더바 개수 이상", *lista, sep="\n")
+    print(index, "개의 이상 탐색")
+    print("메인3항목중 이상 발견", *lista, sep="\n")
+    print("언더바 개수 이상 발견", *listb, sep="\n")
     os.chdir('c:/')
 
 #########################################
