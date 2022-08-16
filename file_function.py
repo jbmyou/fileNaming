@@ -16,6 +16,8 @@ import traceback
 #########################################
 # 채무자조회.xlsx -> dict
 #########################################
+
+
 def debtorInfoDict(path: str):
     """
     채무자조회.xlsx파일을 읽어 채무자키를 key로 하고 
@@ -39,7 +41,7 @@ def debtorInfoDict(path: str):
 #########################################
 # rename
 #########################################
-def rename(src:str, dst:str)->None :
+def rename(src: str, dst: str) -> None:
     """
     전체경로(파일명포함) 두개를 받아서 파일 이름 바꾸는 함수
     동일파일이 있는 경우, 넘버링
@@ -52,10 +54,10 @@ def rename(src:str, dst:str)->None :
     f_name = os.path.split(dst)[1]
     stem = os.path.splitext(f_name)[0]
     ext = os.path.splitext(f_name)[1]
-    
+
     temp = re.sub("[^가-힣]+$", "", stem)
     new_name = temp + ext
-    
+
     i = 1
     while os.path.exists(dir+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
         new_name = temp + "_"+"("+str(i)+")"+ext
@@ -65,8 +67,6 @@ def rename(src:str, dst:str)->None :
     os.rename(src, dst_final)
 
     print(f, new_name)
-
-
 
 
 #########################################
