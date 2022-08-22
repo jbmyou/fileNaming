@@ -18,16 +18,18 @@ import traceback
 #########################################
 
 
-def debtorInfoDict(path: str):
+def debtorInfoDict():
     """
     채무자조회.xlsx파일을 읽어 채무자키를 key로 하고 
     나머지컬럼을 value로 하는 dict반환
-    dict["키"].컬럼명 으로 읽으면 편함
+    value = dict["키"].컬럼명 // 따옴표의 불편함
+    전체 1회 조회속도 df보다 0.1초 빠름..
     """
-    df_c = pd.read_excel(path)
+    path = r'C:\Users\SL\Desktop\채무자조회.xlsx'
+    df_c = pd.read_excel(path, index_col=0)
     dict = {}
     for key, row in df_c.iterrows():
-        dict[str(row.채무자키)] = row[1:]
+        dict[str(key)] = row[1:]
     # row는 시리즈. 채무자키는 dict의 키로 넣었으니 row[1:]을 value로 넣자.
     # 시리지는 .컬럼명으로 읽으면 되니까 최종적으로
     # dict["20495151"].성명 이렇게 읽으면 된다.
@@ -39,23 +41,34 @@ def debtorInfoDict(path: str):
 
 
 #########################################
-# rename
+# 채무자조회.xlsx -> df, index = 채무자키
 #########################################
-def rename(src: str, dst: str) -> None:
+def debtorInfoDF():
     """
-    전체경로(파일명포함) 두개를 받아서 파일 이름 바꾸는 함수
-    동일파일이 있는 경우, 넘버링
+    채무자조회.xlsx파일을 df로 
+    value = df.looc[12345678].보증인성명 // .loc의 불편함
     """
-    # dst dir과 file 분리하기
-    # file 에서 일련번호 분리하기
-    # while - 일련번호 다시 붙이기
+    path = r'C:\Users\SL\Desktop\채무자조회.xlsx'
+    df_c = pd.read_excel(path, index_col=0)
+    return df_c
 
+
+#########################################
+# move / rename
+#########################################
+def re_name(src: str, dst: str) -> None:
+    """
+    파일명 변경 후 os.rename대신 사용하는 함수(중복확인과 새넘버링)
+    폴더를 바꾸는 거 아니라면 파일명 다를때라는 조건문 다음에 호출
+    srt : dir + file
+    dst : dir + new_name
+    """
     dir = os.path.split(dst)[0]
     f_name = os.path.split(dst)[1]
     stem = os.path.splitext(f_name)[0]
     ext = os.path.splitext(f_name)[1]
 
-    temp = re.sub("[^가-힣]+$", "", stem)
+    temp = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
     new_name = temp + ext
 
     i = 1
@@ -72,26 +85,32 @@ def rename(src: str, dst: str) -> None:
 #########################################
 # 생성일, 수정일 보기 + time을 보기 좋게
 #########################################
+def get_mtime(path):
+    """
+    (pdf)수정일=최초생성일!! 이거 써(이동/파일명 변경해도 안 바뀜)
+    path : (walk)dir + file 또는 (listdir) file 
+    """
+    a = time.ctime(os.path.getmtime(path))
+    b = time.strptime(a)
+    c = time.strftime('%Y.%m.%d - %H:%M:%S', b)
+    return c
 
 
-def c_time(path):
+def get_ctime(path):
+    """
+    이동,복사일이니까 쓰지마(파일명 변경으론 바뀌지 않음)
+    walk로 작업시 path는 dir+file
+    listdir로 작업시 cwd설정 했다면 path는 file명만 와도 됨
+    """
     a = time.ctime(os.path.getctime(path))
     b = time.strptime(a)
     c = time.strftime('%Y.%m.%d - %H:%M:%S', b)
     return c
 
 
-def m_time(path):
-    a = time.ctime(os.path.getmtime(path))
-    b = time.strptime(a)
-    c = time.strftime('%Y.%m.%d - %H:%M:%S', b)
-    return c
-
 #########################################
-# 모든 파일의 정보를 추출하여 csv로 저장, df 반환
+# 모든 파일의 정보를 추출하여 csv로 저장, df 반환. 중복파일명을 기준으로 하고 있는데 파일 사이즈를 기준으로 하는 것으로 수정해야 할듯
 #########################################
-
-
 def all_files(path, local):
     os.chdir(path)
 
@@ -105,7 +124,7 @@ def all_files(path, local):
     modify_time = []
     extension = []
 
-    for root, dirs, files in tqdm(os.walk(path)):
+    for root, __dirs__, files in tqdm(os.walk(path)):
 
         for f in files:
             path = root + z + f
@@ -119,8 +138,8 @@ def all_files(path, local):
             f_name.append(f)
             name_count.append(f_name_dict[f])
             f_size.append(os.path.getsize(path))
-            create_time.append(c_time(path))
-            modify_time.append(m_time(path))
+            create_time.append(get_ctime(path))
+            modify_time.append(get_mtime(path))
             extension.append(os.path.splitext(f)[1])
 
     # 매각사 칼럼 추가하기
@@ -130,7 +149,7 @@ def all_files(path, local):
     sell = []
 
     for i in f_dir:
-        for index, row in df_matching.iterrows():
+        for __index__, row in df_matching.iterrows():
             if re.search(row[0], i):
                 sell.append(row[1])
                 continue
@@ -144,7 +163,7 @@ def all_files(path, local):
 
 
 #########################################
-# 공백을 _로 바꾸고 현재경로에 그대로 저장
+# 공백을 _로 바꾸고 현재경로에 그대로 저장 -> 항목별로
 #########################################
 def change_spaceTo_(s):
     os.chdir(s)
@@ -154,110 +173,126 @@ def change_spaceTo_(s):
         for f in files:
             f_s = root + "\\" + f
             f_d = root + "\\" + f.strip().replace(" ", "_")
-            os.rename(f_s, f_d)
+
+            if f_s != f_d:
+                re_name(f_s, f_d)
 
 
 #########################################
-# 보증인 끝으로 이동
+# 파일명에서 특정 단어를 끝으로 이동, 위치 수정해서 재사용
 #########################################
-def change_guarantee(f_s):
-    os.chdir(f_s)
-    word = '보증인'
+def move_word(word: str, src: str, dst: str = "root"):
+    """
+    모든 하위 파일에서 특정 단어의 위치를 옮겨 파일명 변경하고자 할 때
+    src : dir
+    dst : dir. 안적으면 src의 root
+    """
+    os.chdir(src)
+    _ = "_"
     index = 0
-    for root, __dirs__, files in os.walk(f_s):
-        for f in files:
-            if re.search(word, f):
-                f_d = re.sub(word, "", f)
-                f_d = os.path.splitext(
-                    f_d)[0]+"_"+word+os.path.splitext(f_d)[1]
-                # f_d = re.sub('_{2,}', '_', f_d) 언더바 제거 따로 일괄작업
+    result = []
 
-                # walk를 쓸 때는 언제나 root와 합쳐줘야. cwd와 다르니까!
+    for root, __dirs__, files in os.walk(src):
+        for f in files:
+            if re.search(word, f):  # word가 원래 끝에; 있었어도 _ 추가때문에 파일명은 항상 달라짐
+                stem = os.path.splitext(f)[0]
+                ext = os.path.splitext(f)[1]
+
+                new_name = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
+                new_name = re.sub(word, "", new_name)  # word 제거
+                new_name = new_name + _ + word + ext  # word 재배치
+                new_name = re.sub('_{2,}', '_', new_name)  # __ > _
+
                 f_s = root + "\\" + f
-                f_d = root + "\\" + f_d
-                os.rename(f_s, f_d)
+
+                if dst != "root":
+                    dst = root
+
+                f_d = dst + "\\" + new_name
+                re_name(f_s, f_d)
 
                 index += 1
-    print(str(index)+"건의 보증인 파일 이름 수정 완료")
+                result.append([f, new_name])
+
+    print(str(index)+"건의 파일 이름 수정 완료")
+    print(*result, sep="\n")
 
 
 #########################################
 # 연속된 _를 제거
 #########################################
-def change__(s):
-    os.chdir(s)
-    import re
+def change__(path: str):
+    os.chdir(path)
 
-    for root, __dirs__, files in tqdm(os.walk(s)):
+    for root, __dirs__, files in tqdm(os.walk(path)):
 
         for f in files:
             f_a = re.sub('_{2,}', '_', f)
 
             f_s = root + "\\" + f
             f_d = root + "\\" + f_a
-            os.rename(f_s, f_d)
+
+            if f_a != f:
+                re_name(f_s, f_d)
 
 
 #########################################
 # pdf류 아닌 파일 모두 이동시키기
 #########################################
 
-def not_pdf(file):  # 문자변환 여부 주의
-    df_s = pd.read_csv(file)
+def not_pdf(path: str):  # 문자변환 여부 주의
 
     # pdf류 확장자 리스트
-    extension = ['.jpeg', '.jpg', '.bmp', '.gif', '.pdf', '.png', '.tif']
+    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif'
 
-    # 모든 파일 정보에서 확장자 대소문자 구분없이 비교하여 해당사항이 없으면 이동시키기
-    # 폴더트리까지 그대로 이동하므로 파일명 겹칠 걱정은 하지 않아도 됨
+    for root, __dir__, files in os.walk(path):
 
-    for index, row in df_s.iterrows():
-        ext_check = False  # 기본 옮길 대상인 pdf류가 아니라고 설정
-        for ext in extension:
-            if re.match(ext, row.확장자, re.I):
-                ext_check = True  # pdf류이면 기본값 변경
-                continue
+        for f in files:
+            ext = os.path.splitext(f)[1]
+            if re.search(extension, ext, re.I):
+                pass
+            else:
+                path_s = os.path.join(root, f)
+                path_d = "d:/기타확장자/"+root[3:]
+                path_d_f = path_d + "/" + f
 
-        if ext_check == False:  # 기본값에 변경이 없다면 파일 이동
-            path_s = row.경로+"/"+row.파일명
-            ######### 다운로드 폴더가 아닌 곳에 있다면 여기 수정해줘야함 ##########
-            ######### C:\Users\SL\Downloads\ ##########
-            path_d_d = "d:/기타확장자/"+row.경로[22:]
-            path_d_f = path_d_d + "/" + row.파일명
+                if not os.path.exists(path_d):
+                    os.makedirs(path_d)
 
-            try:
                 shutil.move(path_s, path_d_f)
-            except:
-                if not os.path.exists(path_d_d):
-                    os.makedirs(path_d_d)
-                    shutil.move(path_s, path_d_f)
 
 
 #########################################
 # 사이즈 같은 파일들만 딕셔너리로
 #########################################
-def same_size(path):
-    import copy
-    os.chdir(path)
-    file_list = os.listdir(path)
+def same_size(path: str) -> dict:
+    """
+    사이즈 같은 파일 dict로    
+    """
     dict_size = {}
 
-    for f in file_list:
-        size = os.path.getsize(f)
-        if size not in dict_size:
-            dict_size[size] = [f]
-        else:
-            dict_size[size].append(f)  # 일련번호를 key로 하는 딕셔너리 만들기
-
-    dict_size_2 = copy.deepcopy(dict_size)
+    for root, __dir__, files in os.walk(path):
+        for f in files:
+            size = os.path.getsize(f)
+            fullname = os.path.join(root, f)
+            if size not in dict_size:
+                dict_size[size] = [fullname]
+            else:
+                dict_size[size].append(fullname)
 
     for key, value in dict_size.items():
         if len(value) == 1:
-            del dict_size_2[key]
-        else:
-            continue
+            del dict_size[key]
+        else:  # 중복사이즈인데 수정일이 다른 경우 있는지
+            dict_mtime = {}
+            for fullname in value:
+                mtime = os.path.getmtime(fullname)
+                if mtime not in dict_mtime:
+                    dict_mtime[mtime] = [fullname]
+                else:
+                    dict_mtime[mtime].append(fullname)
 
-    return dict_size_2
+    return dict_size
 
 
 #########################################
@@ -306,7 +341,7 @@ def final_rename(path):
     p2 = re.compile('복사본')
     p3 = re.compile(r'[^가-힣]+$')
 
-    docu_kind = '원인서류|채권양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|등,초본|등초본|외국인|개회|신복|파산'
+    docu_kind = '원인서류|양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|등,초본|등초본|외국인|개회|신복|파산'
     etc_kind = '보증인|재도|1차|2차|3차|4차'
     p_key = re.compile("[0-9]{8}")
     p_docu = re.compile(docu_kind)
@@ -401,12 +436,16 @@ def final_rename(path):
 
 
 def final_check(path):
+    """
+    채무자키 8 자리 있는지
+    문서종류 키워드 있는지
+    """
     os.chdir(path)
     file_list = os.listdir(path)
     lista = []  # 메인 3개 항목 중 문제 발생
     listb = []  # 언더바 개수에 이상
     index = 0
-    docu_kind = '원인서류|채권양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|개회|신복|파산|외국인증명'
+    docu_kind = '원인서류|양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|외국인증명|개회|신복|파산'  # 기타는 안 넣었음
     p0 = re.compile(
         r'[\d]{8}_[a-zA-Z가-힣,()]+_('+docu_kind+')')
     p_ = re.compile('_')
@@ -421,7 +460,8 @@ def final_check(path):
 
             cond1 = (p0.match(temp) == None)
             num_ = len(p_.findall(temp))
-            cond2 = (num_ < 2) | (num_ > 4)
+            # cond1을 통화했다면 num_ 은 반드시 2이상. 6덩이는 나올 수 있으나 수가 적을 것이므로 같이 보자.
+            cond2 = num_ >= 5
 
             if cond1:
                 lista.append(f)
@@ -450,3 +490,5 @@ def final_check(path):
 #   #files = [Path(path +'/'+x).stem for x in all if os.path.isfile(path +'/'+x)]
 #   f_split_list = [f.split('_') for f in files]
 #   return f_split_list
+
+# %%
