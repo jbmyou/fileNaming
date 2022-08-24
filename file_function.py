@@ -343,7 +343,8 @@ def final_rename(path):
 
     docu_kind = '원인서류|양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|등,초본|등초본|외국인|개회|신복|파산'
     etc_kind = '보증인|재도|1차|2차|3차|4차'
-    p_key = re.compile("[0-9]{8}")
+    p_key1 = re.compile("[0-9]{8}")
+    p_key2 = re.compile("[0-9]{9}")
     p_docu = re.compile(docu_kind)
     p_etc = re.compile(etc_kind)
 
@@ -360,7 +361,7 @@ def final_rename(path):
                 res_d = p_docu.search(f)
                 res_e = p_etc.search(f)
 
-                if p_key.match(temp):
+                if (p_key1.match(temp)!=None) & (p_key2.match(temp)==None):
                     if temp[8] != "_":  # key 뒤에 언더바 없는 경우
                         temp = temp[:8] + "_" + temp[8:]
                 else:
