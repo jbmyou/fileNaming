@@ -18,26 +18,52 @@ import traceback
 #########################################
 
 
-def not_pdf(path: str):  # 문자변환 여부 주의
-
+def not_pdf(path: str, dst_root: str, s_index: int):  # 문자변환 여부 주의
+    """
+    os.walk
+    path : 작업최상위 dir
+    dst_root : 비스캔파일 모을 폴더
+    s_index : path에서 제외할 글자수(c:/를 제외한다면 3)
+    """
     # pdf류 확장자 리스트
-    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif'
+    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif|xps'
 
     for root, __dir__, files in os.walk(path):
 
         for f in files:
             ext = os.path.splitext(f)[1]
-            if re.search(extension, ext, re.I):
-                pass
-            else:
-                path_s = os.path.join(root, f)
-                path_d = "d:/기타확장자/"+root[3:]
-                path_d_f = path_d + "/" + f
 
-                if not os.path.exists(path_d):
-                    os.makedirs(path_d)
+            if re.search(extension, ext, re.I) == None:
 
-                shutil.move(path_s, path_d_f)
+                src = os.path.join(root, f)
+                dst_dir = os.path.join(dst_root + root[s_index:])
+                dst = os.path.join(dst_dir, f)
+
+                if not os.path.exists(dst_dir):
+                    os.makedirs(dst_dir)
+
+                shutil.move(src, dst)
+
+
+#########################################
+# 전체 파일 폴더트리 포함 이동
+#########################################
+def move_all(path, dst_root, s_index):
+    """
+    os.walk
+    path : 작업최상위 dir
+    dst_root : 비스캔파일 모을 폴더
+    s_index : path에서 제외할 글자수(c:/를 제외한다면 3)
+    """
+    for root, __dirs__, files in os.walk(path):
+        for f in files:
+            src = os.path.join(root, f)
+            dst_dir = os.path.join(dst_root, root[s_index:])
+            dst = os.path.join(dst_dir, f)
+
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+                shutil.move(src, dst)
 
 
 #########################################
@@ -106,6 +132,7 @@ def re_name(src: str, dst: str) -> None:
     stem = os.path.splitext(f_name)[0]
     ext = os.path.splitext(f_name)[1]
 
+    # date = re.sub("[\D][\d]{6}")
     temp = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
     new_name = temp + ext
 
@@ -123,31 +150,31 @@ def re_name(src: str, dst: str) -> None:
 #########################################
 # 파일명에서 특정 단어를 끝으로 이동, 위치 수정해서 재사용
 #########################################
-def move_word(word: str, src: str, dst: str = "root"):
+def move_word(word: str, filelist: list, dst: str = "root"):
     """
     모든 하위 파일에서 특정 단어의 위치를 옮겨 파일명 변경하고자 할 때
-    src : dir
+    filelist : os.listdir(walk) or os.walk(path) or list of path
     dst : dir. 안적으면 src의 root
     """
-    os.chdir(src)
     _ = "_"
     index = 0
     result = []
 
-    for root, __dirs__, files in os.walk(src):
+    for root, __dirs__, files in filelist:
         for f in files:
             if re.search(word, f):  # word가 원래 끝에; 있었어도 _ 추가때문에 파일명은 항상 달라짐
                 stem = os.path.splitext(f)[0]
                 ext = os.path.splitext(f)[1]
 
-                new_name = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
+                new_name = f
+                # re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
                 new_name = re.sub(word, "", new_name)  # word 제거
                 new_name = new_name + _ + word + ext  # word 재배치
-                new_name = re.sub('_{2,}', '_', new_name)  # __ > _
+                new_name = re.sub('_{2,}', '_', new_name)  # __ > _ 있어야됨
 
                 f_s = root + "\\" + f
 
-                if dst != "root":
+                if dst == "root":
                     dst = root
 
                 f_d = dst + "\\" + new_name
@@ -161,37 +188,28 @@ def move_word(word: str, src: str, dst: str = "root"):
 
 
 #########################################
-# 공백을 _로 바꾸고 현재경로에 그대로 저장 -> 항목별로
+# 특정단어를 대체하여 파일명만 바꾸기
 #########################################
-def change_spaceTo_(s):
-    os.chdir(s)
+def change_word(word: str, word_to_change: str, file_list: list) -> list:
+    """
+    파일리스트에서 특정 단어를 다른 단어로 대체
+    """
+    p1 = re.compile(word)
+    count = 0
+    list = []
 
-    for root, __dirs__, files in tqdm(os.walk(s)):
-
+    for root, __dirs__, files in tqdm(file_list):
         for f in files:
-            f_s = root + "\\" + f
-            f_d = root + "\\" + f.strip().replace(" ", "_")
+            new_name = f
+            if p1.search(new_name):
+                new_name = p1.sub(new_name, word_to_change)
+            if new_name != f:
+                list.append([f, new_name])
+                re_name(os.path.join(root, f), os.path.join(root, new_name))
+                count += 1
 
-            if f_s != f_d:
-                re_name(f_s, f_d)
-
-
-#########################################
-# 연속된 _를 제거
-#########################################
-def change__(path: str):
-    os.chdir(path)
-
-    for root, __dirs__, files in tqdm(os.walk(path)):
-
-        for f in files:
-            f_a = re.sub('_{2,}', '_', f)
-
-            f_s = root + "\\" + f
-            f_d = root + "\\" + f_a
-
-            if f_a != f:
-                re_name(f_s, f_d)
+    print(count, "개 파일이름 변경")
+    return list
 
 
 #########################################
