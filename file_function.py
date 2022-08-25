@@ -14,10 +14,35 @@ from pathlib import Path
 import traceback
 
 #########################################
-# 채무자조회.xlsx -> dict
+# pdf류 아닌 파일 모두 이동시키기
 #########################################
 
 
+def not_pdf(path: str):  # 문자변환 여부 주의
+
+    # pdf류 확장자 리스트
+    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif'
+
+    for root, __dir__, files in os.walk(path):
+
+        for f in files:
+            ext = os.path.splitext(f)[1]
+            if re.search(extension, ext, re.I):
+                pass
+            else:
+                path_s = os.path.join(root, f)
+                path_d = "d:/기타확장자/"+root[3:]
+                path_d_f = path_d + "/" + f
+
+                if not os.path.exists(path_d):
+                    os.makedirs(path_d)
+
+                shutil.move(path_s, path_d_f)
+
+
+#########################################
+# 채무자조회.xlsx -> dict
+#########################################
 def debtorInfoDict():
     """
     채무자조회.xlsx파일을 읽어 채무자키를 key로 하고 
@@ -38,48 +63,6 @@ def debtorInfoDict():
     # {'매각사구분':row.매각사구분, '성명' : row.성명, \
         # '주민번호인':row.주민번호인, '관리자기타':str(row.관리자기타), '보증인성명':row.보증인성명}
     return dict
-
-
-#########################################
-# 채무자조회.xlsx -> df, index = 채무자키
-#########################################
-def debtorInfoDF():
-    """
-    채무자조회.xlsx파일을 df로 
-    value = df.looc[12345678].보증인성명 // .loc의 불편함
-    """
-    path = r'C:\Users\SL\Desktop\채무자조회.xlsx'
-    df_c = pd.read_excel(path, index_col=0)
-    return df_c
-
-
-#########################################
-# move / rename
-#########################################
-def re_name(src: str, dst: str) -> None:
-    """
-    파일명 변경 후 os.rename대신 사용하는 함수(중복확인과 새넘버링)
-    폴더를 바꾸는 거 아니라면 파일명 다를때라는 조건문 다음에 호출
-    srt : dir + file
-    dst : dir + new_name
-    """
-    dir = os.path.split(dst)[0]
-    f_name = os.path.split(dst)[1]
-    stem = os.path.splitext(f_name)[0]
-    ext = os.path.splitext(f_name)[1]
-
-    temp = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
-    new_name = temp + ext
-
-    i = 1
-    while os.path.exists(dir+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
-        new_name = temp + "_"+"("+str(i)+")"+ext
-        i += 1
-
-    dst_final = dir + "/" + new_name
-    os.rename(src, dst_final)
-
-    print(src, new_name)
 
 
 #########################################
@@ -109,73 +92,32 @@ def get_ctime(path):
 
 
 #########################################
-# 모든 파일의 정보를 추출하여 csv로 저장, df 반환. 중복파일명을 기준으로 하고 있는데 파일 사이즈를 기준으로 하는 것으로 수정해야 할듯
+# move / rename
 #########################################
-def all_files(path, local):
-    os.chdir(path)
+def re_name(src: str, dst: str) -> None:
+    """
+    파일명 변경 후 os.rename대신 사용하는 함수(중복확인과 새넘버링)
+    폴더를 바꾸는 거 아니라면 파일명 다를때라는 조건문 다음에 호출
+    srt : dir + file
+    dst : dir + new_name
+    """
+    dir = os.path.split(dst)[0]
+    f_name = os.path.split(dst)[1]
+    stem = os.path.splitext(f_name)[0]
+    ext = os.path.splitext(f_name)[1]
 
-    z = "/"
-    f_name_dict = {}  # 중복파일명 숫자를 카운트 할 딕셔너리
-    f_dir = []
-    f_name = []
-    name_count = []
-    f_size = []
-    create_time = []
-    modify_time = []
-    extension = []
+    temp = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
+    new_name = temp + ext
 
-    for root, __dirs__, files in tqdm(os.walk(path)):
+    i = 1
+    while os.path.exists(dir+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
+        new_name = temp + "_"+"("+str(i)+")"+ext
+        i += 1
 
-        for f in files:
-            path = root + z + f
+    dst_final = dir + "/" + new_name
+    os.rename(src, dst_final)
 
-            if f not in f_name:
-                f_name_dict[f] = 1
-            else:
-                f_name_dict[f] = f_name_dict[f]+1
-
-            f_dir.append(root)
-            f_name.append(f)
-            name_count.append(f_name_dict[f])
-            f_size.append(os.path.getsize(path))
-            create_time.append(get_ctime(path))
-            modify_time.append(get_mtime(path))
-            extension.append(os.path.splitext(f)[1])
-
-    # 매각사 칼럼 추가하기
-    import re
-    df_matching = pd.read_excel(
-        r'D:\전산\workspace\python_work\파일\매각사 이름매칭.xlsx')
-    sell = []
-
-    for i in f_dir:
-        for __index__, row in df_matching.iterrows():
-            if re.search(row[0], i):
-                sell.append(row[1])
-                continue
-
-    df = pd.DataFrame({'경로': f_dir, '매각사': sell, '파일명': f_name, '중복수': name_count,
-                      '크기': f_size, '생성일': create_time, '수정일': modify_time, '확장자': extension})
-    df.to_csv(r'C:\Users\SL\Desktop/'+local +
-              ' 모든 파일 정보.csv', encoding='utf-8-sig')
-
-    return df
-
-
-#########################################
-# 공백을 _로 바꾸고 현재경로에 그대로 저장 -> 항목별로
-#########################################
-def change_spaceTo_(s):
-    os.chdir(s)
-
-    for root, __dirs__, files in tqdm(os.walk(s)):
-
-        for f in files:
-            f_s = root + "\\" + f
-            f_d = root + "\\" + f.strip().replace(" ", "_")
-
-            if f_s != f_d:
-                re_name(f_s, f_d)
+    print(src, new_name)
 
 
 #########################################
@@ -219,6 +161,22 @@ def move_word(word: str, src: str, dst: str = "root"):
 
 
 #########################################
+# 공백을 _로 바꾸고 현재경로에 그대로 저장 -> 항목별로
+#########################################
+def change_spaceTo_(s):
+    os.chdir(s)
+
+    for root, __dirs__, files in tqdm(os.walk(s)):
+
+        for f in files:
+            f_s = root + "\\" + f
+            f_d = root + "\\" + f.strip().replace(" ", "_")
+
+            if f_s != f_d:
+                re_name(f_s, f_d)
+
+
+#########################################
 # 연속된 _를 제거
 #########################################
 def change__(path: str):
@@ -234,95 +192,6 @@ def change__(path: str):
 
             if f_a != f:
                 re_name(f_s, f_d)
-
-
-#########################################
-# pdf류 아닌 파일 모두 이동시키기
-#########################################
-
-def not_pdf(path: str):  # 문자변환 여부 주의
-
-    # pdf류 확장자 리스트
-    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif'
-
-    for root, __dir__, files in os.walk(path):
-
-        for f in files:
-            ext = os.path.splitext(f)[1]
-            if re.search(extension, ext, re.I):
-                pass
-            else:
-                path_s = os.path.join(root, f)
-                path_d = "d:/기타확장자/"+root[3:]
-                path_d_f = path_d + "/" + f
-
-                if not os.path.exists(path_d):
-                    os.makedirs(path_d)
-
-                shutil.move(path_s, path_d_f)
-
-
-#########################################
-# 사이즈 같은 파일들만 딕셔너리로
-#########################################
-def same_size(path: str) -> dict:
-    """
-    사이즈 같은 파일 dict로    
-    """
-    dict_size = {}
-
-    for root, __dir__, files in os.walk(path):
-        for f in files:
-            size = os.path.getsize(f)
-            fullname = os.path.join(root, f)
-            if size not in dict_size:
-                dict_size[size] = [fullname]
-            else:
-                dict_size[size].append(fullname)
-
-    for key, value in dict_size.items():
-        if len(value) == 1:
-            del dict_size[key]
-        else:  # 중복사이즈인데 수정일이 다른 경우 있는지
-            dict_mtime = {}
-            for fullname in value:
-                mtime = os.path.getmtime(fullname)
-                if mtime not in dict_mtime:
-                    dict_mtime[mtime] = [fullname]
-                else:
-                    dict_mtime[mtime].append(fullname)
-
-    return dict_size
-
-
-#########################################
-# 다른 폴더로 이동
-#########################################
-def move(path, f_d):
-    os.chdir(path)
-    file_list = os.listdir(path)
-    index = 0
-    p1 = re.compile(r'[^가-힣]+$')
-
-    for f in tqdm(file_list):
-        if os.path.isfile(f) & (f != "Thumbs.db"):
-            stem = os.path.splitext(f)[0]
-            ext = os.path.splitext(f)[1]
-
-            temp = p1.sub("", stem)
-            new_name = temp + ext  # 넘버링 제외된 파일명 + 확장자 붙여서 비교
-
-            i = 1
-            while os.path.exists(f_d+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
-                new_name = temp + "_"+"("+str(i)+")"+ext
-                i += 1
-
-            f_d_final = f_d + "/" + new_name
-            shutil.move(f, f_d_final)
-            index += 1
-
-    print(index, "개 파일 이동 완료")
-    os.chdir('c:/')
 
 
 #########################################
@@ -361,7 +230,7 @@ def final_rename(path):
                 res_d = p_docu.search(f)
                 res_e = p_etc.search(f)
 
-                if (p_key1.match(temp)!=None) & (p_key2.match(temp)==None):
+                if (p_key1.match(temp) != None) & (p_key2.match(temp) == None):
                     if temp[8] != "_":  # key 뒤에 언더바 없는 경우
                         temp = temp[:8] + "_" + temp[8:]
                 else:
@@ -429,12 +298,12 @@ def final_rename(path):
     print("파일명 변경 목록 : ", *changed, sep="\n")
     os.chdir('c:/')
 
+
 #########################################
 # 최종확인2 - 마지막으로 3개 양식과 언버가 개수 확인
 #########################################
 
 # 등,초본이 초본을 포함해버린다. 이거 수정해야
-
 
 def final_check(path):
     """
@@ -481,8 +350,141 @@ def final_check(path):
     print("언더바 개수 이상 발견", *listb, sep="\n")
     os.chdir('c:/')
 
+
+# 불요 ######################################################################################
+
+# #########################################
+# # 채무자조회.xlsx -> df, index = 채무자키
+# #########################################
+# def debtorInfoDF():
+#     """
+#     채무자조회.xlsx파일을 df로
+#     value = df.looc[12345678].보증인성명 // .loc의 불편함
+#     """
+#     path = r'C:\Users\SL\Desktop\채무자조회.xlsx'
+#     df_c = pd.read_excel(path, index_col=0)
+#     return df_c
+
+
+# #########################################
+# # 모든 파일의 정보를 추출하여 csv로 저장, df 반환. 중복파일명을 기준으로 하고 있는데 파일 사이즈를 기준으로 하는 것으로 수정해야 할듯
+# #########################################
+# def all_files(path, local):
+#     os.chdir(path)
+
+#     z = "/"
+#     f_name_dict = {}  # 중복파일명 숫자를 카운트 할 딕셔너리
+#     f_dir = []
+#     f_name = []
+#     name_count = []
+#     f_size = []
+#     create_time = []
+#     modify_time = []
+#     extension = []
+
+#     for root, __dirs__, files in tqdm(os.walk(path)):
+
+#         for f in files:
+#             path = root + z + f
+
+#             if f not in f_name:
+#                 f_name_dict[f] = 1
+#             else:
+#                 f_name_dict[f] = f_name_dict[f]+1
+
+#             f_dir.append(root)
+#             f_name.append(f)
+#             name_count.append(f_name_dict[f])
+#             f_size.append(os.path.getsize(path))
+#             create_time.append(get_ctime(path))
+#             modify_time.append(get_mtime(path))
+#             extension.append(os.path.splitext(f)[1])
+
+#     # 매각사 칼럼 추가하기
+#     import re
+#     df_matching = pd.read_excel(
+#         r'D:\전산\workspace\python_work\파일\매각사 이름매칭.xlsx')
+#     sell = []
+
+#     for i in f_dir:
+#         for __index__, row in df_matching.iterrows():
+#             if re.search(row[0], i):
+#                 sell.append(row[1])
+#                 continue
+
+#     df = pd.DataFrame({'경로': f_dir, '매각사': sell, '파일명': f_name, '중복수': name_count,
+#                       '크기': f_size, '생성일': create_time, '수정일': modify_time, '확장자': extension})
+#     df.to_csv(r'C:\Users\SL\Desktop/'+local +
+#               ' 모든 파일 정보.csv', encoding='utf-8-sig')
+
+#     return df
+
+
+# #########################################
+# # 사이즈 같은 파일들만 딕셔너리로
+# #########################################
+# def same_size(path: str) -> dict:
+#     """
+#     사이즈 같은 파일 dict로
+#     """
+#     dict_size = {}
+
+#     for root, __dir__, files in os.walk(path):
+#         for f in files:
+#             size = os.path.getsize(f)
+#             fullname = os.path.join(root, f)
+#             if size not in dict_size:
+#                 dict_size[size] = [fullname]
+#             else:
+#                 dict_size[size].append(fullname)
+
+#     for key, value in dict_size.items():
+#         if len(value) == 1:
+#             del dict_size[key]
+#         else:  # 중복사이즈인데 수정일이 다른 경우 있는지
+#             dict_mtime = {}
+#             for fullname in value:
+#                 mtime = os.path.getmtime(fullname)
+#                 if mtime not in dict_mtime:
+#                     dict_mtime[mtime] = [fullname]
+#                 else:
+#                     dict_mtime[mtime].append(fullname)
+
+#     return dict_size
+
+
+# #########################################
+# # 다른 폴더로 이동
+# #########################################
+# def move(path, f_d):
+#     os.chdir(path)
+#     file_list = os.listdir(path)
+#     index = 0
+#     p1 = re.compile(r'[^가-힣]+$')
+
+#     for f in tqdm(file_list):
+#         if os.path.isfile(f) & (f != "Thumbs.db"):
+#             stem = os.path.splitext(f)[0]
+#             ext = os.path.splitext(f)[1]
+
+#             temp = p1.sub("", stem)
+#             new_name = temp + ext  # 넘버링 제외된 파일명 + 확장자 붙여서 비교
+
+#             i = 1
+#             while os.path.exists(f_d+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
+#                 new_name = temp + "_"+"("+str(i)+")"+ext
+#                 i += 1
+
+#             f_d_final = f_d + "/" + new_name
+#             shutil.move(f, f_d_final)
+#             index += 1
+
+#     print(index, "개 파일 이동 완료")
+#     os.chdir('c:/')
+
+
 #########################################
-# 파일명 구분기호별 분류하기
+# 파일명 구분기호별 분류하기( _, space...)
 #########################################
 # def filename_split(path) :
 #   all = os.listdir(path)
