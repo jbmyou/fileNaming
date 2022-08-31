@@ -133,7 +133,8 @@ def re_name(src: str, dst: str) -> None:
     ext = os.path.splitext(f_name)[1]
 
     # date = re.sub("[\D][\d]{6}")
-    temp = re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
+    numbering = r'(_[(][\d]{1,2}[)]|_[\d]{1,2}|[\s]*[(][\d]{1,2}[)][\s]*|[\s]+[\d]{1,2}[\s]*)$'
+    temp = re.sub(numbering, "", stem)  # 모든 넘버링 제거
     new_name = temp + ext
 
     i = 1
@@ -166,10 +167,11 @@ def move_word(word: str, filelist: list, dst: str = "root"):
                 stem = os.path.splitext(f)[0]
                 ext = os.path.splitext(f)[1]
 
-                new_name = f
                 # re.sub("[^가-힣]+$", "", stem)  # 모든 넘버링 제거
-                new_name = re.sub(word, "", new_name)  # word 제거
-                new_name = new_name + _ + word + ext  # word 재배치
+                numbering = r'(_[(][\d]{1,2}[)]|_[\d]{1,2}|[\s]*[(][\d]{1,2}[)][\s]*|[\s]+[\d]{1,2}[\s]*)$'
+                temp = re.sub(numbering, "", stem)  # 모든 넘버링 제거
+                temp = re.sub(word, "", temp)  # word 제거
+                new_name = temp + _ + word + ext  # word 재배치
                 new_name = re.sub('_{2,}', '_', new_name)  # __ > _ 있어야됨
 
                 f_s = root + "\\" + f
@@ -226,7 +228,8 @@ def final_rename(path):
     p0 = re.compile(r'\s')
     p1 = re.compile('_{2,}')
     p2 = re.compile('복사본')
-    p3 = re.compile(r'[^가-힣]+$')
+    numbering = r'(_[(][\d]{1,2}[)]|_[\d]{1,2}|[\s]*[(][\d]{1,2}[)][\s]*|[\s]+[\d]{1,2}[\s]*)$'
+    p3 = re.compile(numbering)  # 모든 넘버링 제거
 
     docu_kind = '원인서류|양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|등,초본|등초본|외국인|개회|신복|파산'
     etc_kind = '보증인|재도|1차|2차|3차|4차'
