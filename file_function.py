@@ -82,7 +82,7 @@ def re_name(src: str, dst: str) -> list:
 #########################################
 def debtorInfoDict():
     """
-    채무자조회.xlsx파일을 읽어 채무자키를 key로 하고 
+    채무자조회.xlsx파일을 읽어 채무자키를 key로 하고
     나머지컬럼을 value로 하는 dict반환
     value = dict["키"].컬럼명 // 따옴표의 불편함
     전체 1회 조회속도 df보다 0.1초 빠름..
@@ -108,7 +108,7 @@ def debtorInfoDict():
 def get_mtime(path):
     """
     (pdf)수정일=최초생성일!! 이거 써(이동/파일명 변경해도 안 바뀜)
-    path : (walk)dir + file 또는 (listdir) file 
+    path : (walk)dir + file 또는 (listdir) file
     """
     a = time.ctime(os.path.getmtime(path))
     b = time.strptime(a)
@@ -243,6 +243,9 @@ def change_word(word: str, word_to_change: str, file_list: list) -> list:
 #########################################
 
 def final_rename(path):
+    """"
+    자기 폴더에서 공백과 언더바 점검후 넘버링도 새롭게(마지막 숫자가 +될수도 있음)
+    """
     f_d = path
     os.chdir(path)
     file_list = os.listdir(path)
@@ -399,14 +402,11 @@ def final_check(path):
 #########################################
 # 파일 정보를 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
 #########################################
-"""
-파일 정보를 2차원 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
-key의 타입은 모두 str임
-"""
-
-
 def fileInfoDict(path) -> dict:
-
+    """
+    파일 정보를 2차원 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
+    key의 타입은 모두 str임
+    """
     filelist = os.walk(path)
     v2_dict = {}  # 중복파일명 숫자를 카운트 할 딕셔너리
 
@@ -425,6 +425,36 @@ def fileInfoDict(path) -> dict:
                 v2_dict[key][size] = fullpath
 
     return v2_dict
+
+
+def moveFilesToRootFolderAndRmDirs(path):
+    """
+    모든 하위 폴더의 파일들을 path로
+    그리고 빈 폴더는 지워버리기
+    """
+    index = 0
+    for root, __dirs__, files in os.walk(path):
+        for f in files:
+            src = join(root, f)
+            dst = join(path, f)
+            re_name(src, dst)
+            index += 1
+
+    print(index, "개의 파일 이동 완료")
+    rmSubDirs(path)
+    print("빈 폴더 삭제 완료")
+
+
+def rmSubDirs(path: str):
+    """모든 비어있는 폴더 삭제 os.walk"""
+    for root, __dir__, __files__ in os.walk(path):
+        try:
+            os.rmdir(root)
+        except:
+            print(root)
+            print(traceback.format_exc())
+            print("")
+            continue
 
 
 # 불요 ######################################################################################
