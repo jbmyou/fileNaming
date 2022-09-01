@@ -12,6 +12,7 @@ from tqdm.notebook import tqdm
 import re
 from pathlib import Path
 import traceback
+from os.path import join
 
 #########################################
 # pdf류 아닌 파일 모두 이동시키기
@@ -26,18 +27,18 @@ def not_pdf(path: str, dst_root: str, s_index: int):  # 문자변환 여부 주�
     s_index : path에서 제외할 글자수(c:/를 제외한다면 3)
     """
     # pdf류 확장자 리스트
-    extension = 'jpeg|jpg|bmp|gif|pdf|png|tif|xps'
+    p_extension = re.compile('.jpeg|.jpg|.bmp|.gif|.pdf|.png|.tif|.xps', re.I)
 
     for root, __dir__, files in os.walk(path):
 
         for f in files:
             ext = os.path.splitext(f)[1]
 
-            if re.search(extension, ext, re.I) == None:
+            if p_extension.match(ext) == None:
 
-                src = os.path.join(root, f)
-                dst_dir = os.path.join(dst_root + root[s_index:])
-                dst = os.path.join(dst_dir, f)
+                src = join(root, f)
+                dst_dir = join(dst_root + root[s_index:])
+                dst = join(dst_dir, f)
 
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
@@ -73,7 +74,7 @@ def re_name(src: str, dst: str) -> None:
     dst_final = dir + "/" + new_name
     os.rename(src, dst_final)
 
-    print(src, new_name)
+    print(src, dst_final)
 
 
 #########################################
@@ -140,9 +141,9 @@ def move_all(path: str, dst_root: str) -> None:
     # +1을 해주지 않으면 하위폴더의 경우 root[s_index:]가 /로 시작해버려서 c로 가버림
     for root, __dirs__, files in os.walk(path):
         for f in files:
-            src = os.path.join(root, f)
-            dst_dir = os.path.join(dst_root, root[s_index:])
-            dst = os.path.join(dst_dir, f)
+            src = join(root, f)
+            dst_dir = join(dst_root, root[s_index:])
+            dst = join(dst_dir, f)
 
             if not os.path.exists(dst_dir):
                 os.makedirs(dst_dir)
@@ -162,9 +163,9 @@ def copy_all(path: str, dst_root: str) -> None:
         1  # +1을 해주지 않으면 하위폴더의 경우 root[s_index:]가 /로 시작해버려서 c로 가버림
     for root, __dirs__, files in os.walk(path):
         for f in files:
-            src = os.path.join(root, f)
-            dst_dir = os.path.join(dst_root, root[s_index:])
-            dst = os.path.join(dst_dir, f)
+            src = join(root, f)
+            dst_dir = join(dst_root, root[s_index:])
+            dst = join(dst_dir, f)
 
             if not os.path.exists(dst_dir):
                 os.makedirs(dst_dir)
@@ -230,7 +231,7 @@ def change_word(word: str, word_to_change: str, file_list: list) -> list:
                 new_name = p1.sub(new_name, word_to_change)
             if new_name != f:
                 list.append([f, new_name])
-                re_name(os.path.join(root, f), os.path.join(root, new_name))
+                re_name(join(root, f), join(root, new_name))
                 count += 1
 
     print(count, "개 파일이름 변경")
@@ -395,6 +396,36 @@ def final_check(path):
     os.chdir('c:/')
 
 
+#########################################
+# 파일 정보를 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
+#########################################
+"""
+파일 정보를 2차원 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
+"""
+
+
+def all_files(path) -> dict:
+
+    filelist = os.walk(path)
+    v2_dict = {}  # 중복파일명 숫자를 카운트 할 딕셔너리
+
+    for root, __dirs__, files in filelist:
+
+        for f in files:
+            fullpath = join(root, f)
+            split_list = f.split("_")
+
+            key = split_list[0]
+            size = os.path.getsize(fullpath)
+
+            if key not in v2_dict:
+                v2_dict[key] = {size: fullpath}
+            else:
+                v2_dict[key][size] = fullpath
+
+    return v2_dict
+
+
 # 불요 ######################################################################################
 
 # #########################################
@@ -476,7 +507,7 @@ def final_check(path):
 #     for root, __dir__, files in os.walk(path):
 #         for f in files:
 #             size = os.path.getsize(f)
-#             fullname = os.path.join(root, f)
+#             fullname = join(root, f)
 #             if size not in dict_size:
 #                 dict_size[size] = [fullname]
 #             else:
