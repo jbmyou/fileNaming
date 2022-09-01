@@ -49,7 +49,7 @@ def not_pdf(path: str, dst_root: str, s_index: int):  # 문자변환 여부 주�
 #########################################
 # move / rename
 #########################################
-def re_name(src: str, dst: str) -> None:
+def re_name(src: str, dst: str) -> list:
     """
     파일명 변경 후 os.rename대신 사용하는 함수(중복확인과 새넘버링)
     폴더를 바꾸는 거 아니라면 파일명 다를때라는 조건문 다음에 호출
@@ -74,7 +74,7 @@ def re_name(src: str, dst: str) -> None:
     dst_final = dir + "/" + new_name
     os.rename(src, dst_final)
 
-    print(src, dst_final)
+    return [src, dst_final]
 
 
 #########################################
@@ -401,10 +401,11 @@ def final_check(path):
 #########################################
 """
 파일 정보를 2차원 딕셔너리로, 무엇을 추가할지는 수정해서 쓰면 됨
+key의 타입은 모두 str임
 """
 
 
-def all_files(path) -> dict:
+def fileInfoDict(path) -> dict:
 
     filelist = os.walk(path)
     v2_dict = {}  # 중복파일명 숫자를 카운트 할 딕셔너리
@@ -415,8 +416,8 @@ def all_files(path) -> dict:
             fullpath = join(root, f)
             split_list = f.split("_")
 
-            key = split_list[0]
-            size = os.path.getsize(fullpath)
+            key = str(split_list[0])
+            size = str(os.path.getsize(fullpath))
 
             if key not in v2_dict:
                 v2_dict[key] = {size: fullpath}
