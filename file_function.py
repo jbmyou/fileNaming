@@ -46,25 +46,34 @@ def not_pdf(path: str, dst_root: str, s_index: int):  # 문자변환 여부 주�
 
 
 #########################################
-# 전체 파일 폴더트리 포함 이동
+# move / rename
 #########################################
-def move_all(path, dst_root):
+def re_name(src: str, dst: str) -> None:
     """
-    os.walk
-    path : 작업최상위 dir
-    dst_root : 비스캔파일 모을 폴더
+    파일명 변경 후 os.rename대신 사용하는 함수(중복확인과 새넘버링)
+    폴더를 바꾸는 거 아니라면 파일명 다를때라는 조건문 다음에 호출
+    srt : dir + file
+    dst : dir + new_name
     """
-    s_index = len(path)
-    print(s_index)
-    for root, __dirs__, files in os.walk(path):
-        for f in files:
-            src = os.path.join(root, f)
-            dst_dir = os.path.join(dst_root, root[s_index:])
-            dst = os.path.join(dst_dir, f)
+    dir = os.path.split(dst)[0]
+    f_name = os.path.split(dst)[1]
+    stem = os.path.splitext(f_name)[0]
+    ext = os.path.splitext(f_name)[1]
 
-            if not os.path.exists(dst_dir):
-                os.makedirs(dst_dir)
-                shutil.move(src, dst)
+    # date = re.sub("[\D][\d]{6}")
+    numbering = r'(_[(][\d]{1,2}[)]|_[\d]{1,2}|[\s]*[(][\d]{1,2}[)][\s]*|[\s]+[\d]{1,2}[\s]*)$'
+    temp = re.sub(numbering, "", stem)  # 모든 넘버링 제거
+    new_name = temp + ext
+
+    i = 1
+    while os.path.exists(dir+"/"+new_name):  # 작업디렉토리가 아니므로 풀경로
+        new_name = temp + "_"+"("+str(i)+")"+ext
+        i += 1
+
+    dst_final = dir + "/" + new_name
+    os.rename(src, dst_final)
+
+    print(src, new_name)
 
 
 #########################################
@@ -119,7 +128,7 @@ def get_ctime(path):
 
 
 #########################################
-# move / rename
+# 전체 파일 폴더트리 포함 이동
 #########################################
 def move_all(path: str, dst_root: str) -> None:
     """
@@ -127,8 +136,8 @@ def move_all(path: str, dst_root: str) -> None:
     path : 작업 최상위 폴더 경로
     dst_root : 복사할 최상위 폴더
     """
-    s_index = len(path) + \
-        1  # +1을 해주지 않으면 하위폴더의 경우 root[s_index:]가 /로 시작해버려서 c로 가버림
+    s_index = len(path) + 1
+    # +1을 해주지 않으면 하위폴더의 경우 root[s_index:]가 /로 시작해버려서 c로 가버림
     for root, __dirs__, files in os.walk(path):
         for f in files:
             src = os.path.join(root, f)
