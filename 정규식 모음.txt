@@ -42,3 +42,15 @@ p_extension.search(f) # $과 match의 조합은 불가함
 p_extension = re.compile('.jpeg|.jpg|.bmp|.gif|.pdf|.png|.tif|.xps', re.I)
 p_extension.match(ext)
 
+
+
+---------------------import ------------------------------------
+import os
+import shutil
+import time
+import pandas as pd
+from tqdm.notebook import tqdm      #tqdm(filelist, total = len(filelist, position=0, leave=Ture)
+import re
+from pathlib import Path
+import traceback
+from os.path import join
