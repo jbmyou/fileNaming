@@ -11,6 +11,8 @@ docu_kind = '원인서류|양도통지서|양통|승계|판결|명령|이행권�
 docu_kind = '원인서류|양도통지서|판결문|지급명령|이행권고|화해권고|타채|결정문|등본|초본|외국인증명|개회|신복|파산'
 # 최종 결정된 거
 docu_kind = '원인서류|양도통지서|집행권원|강제집행|등본|초본|외국인|개회|신복|파산|재산조사|기타'
+# 공백, 차수, 재도 고려
+docu_kind = r'원인서류|양도통지서[\s]?[\d]?[차]?|집행권원[\s]?[재]?[도]?|집행권원 재도|집행권원재도|강제집행|등본|초본|외국인증명|개인회생|신용회복|파산|재산조사|기타'
 
 p_docu = re.compile(docu_kind)
 
@@ -49,7 +51,7 @@ import os
 import shutil
 import time
 import pandas as pd
-from tqdm.notebook import tqdm      #tqdm(filelist, total = len(filelist, position=0, leave=Ture)
+from tqdm.notebook import tqdm      #tqdm(filelist, total = len(filelist), position=0, leave=True)
 import re
 from pathlib import Path
 import traceback
